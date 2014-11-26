@@ -308,6 +308,19 @@ test('should be able to listen for general `change` events on subcollection', fu
     cool.name = 'new name';
 });
 
+test('should be able to listen for custom events triggered by model', function (t) {
+    t.plan(2);
+    var model = new Widget();
+    var base = new Widgets([model]);
+    var sub = new SubCollection(base);
+    sub.on('customEvent', function (foo) {
+        t.deepEqual(foo, { random: 'option' });
+        t.pass('custom event triggered successfully');
+        t.end();
+    });
+    model.trigger('customEvent', { random: 'option' });
+});
+
 test('have the correct ordering saved when processing a sort event', function (t) {
     t.plan(3);
     var base = getBaseCollection();

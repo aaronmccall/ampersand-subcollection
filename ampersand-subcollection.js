@@ -151,12 +151,14 @@ _.extend(SubCollection.prototype, Events, underscoreMixins, {
 
         // save 'em
         this.models = newModels;
-        
+
         _.each(toRemove, function (model) {
+            this._removeReference(model);
             this.trigger('remove', model, this);
         }, this);
 
         _.each(toAdd, function (model) {
+            this._addReference(model);
             this.trigger('add', model, this);
         }, this);
 
@@ -175,6 +177,24 @@ _.extend(SubCollection.prototype, Events, underscoreMixins, {
         if ((_.contains(['sync', 'invalid', 'destroy']) || eventName.indexOf('change') !== -1) && this.contains(model)) {
             this.trigger.apply(this, arguments);
         }
+    },
+
+    // Internal method to create a model's ties to a collection.
+    _addReference: function (model) {
+        if (model.on) model.on('all', this._onModelEvent, this);
+    },
+
+    // Internal method to sever a model's ties to a collection.
+    _removeReference: function (model) {
+        if (model.off) model.off('all', this._onModelEvent, this);
+    },
+
+    _onModelEvent: function (event, model, collection, options) {
+        if (_.contains(['add', 'remove'], event) || event.indexOf('change') !== -1) {
+            return;
+        }
+
+        this.trigger.apply(this, arguments);
     }
 });
 
