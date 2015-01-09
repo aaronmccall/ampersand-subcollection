@@ -218,6 +218,21 @@ Object.defineProperty(SubCollection.prototype, 'isCollection', {
     }
 });
 
+// Proxy model management methods directly to this.collection
+['add', 'parse', 'remove', 'set'].forEach(function (method) {
+    SubCollection.prototype[method] = function () {
+        return this.collection[method].apply(this.collection, arguments);
+    };
+});
+
+// Proxy serializing methods to this.collection's methods, but
+// with the subcollection's models
+['serialize', 'toJSON'].forEach(function (method) {
+    SubCollection.prototype[method] = function () {
+        return this.collection[method].apply(this, arguments);
+    };
+});
+
 SubCollection.extend = classExtend;
 
 module.exports = SubCollection;
