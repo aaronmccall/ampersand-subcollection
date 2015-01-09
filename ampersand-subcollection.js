@@ -100,6 +100,25 @@ _.extend(SubCollection.prototype, Events, underscoreMixins, {
         this.configure({}, true);
     },
 
+    // sort with own comparator or collection.comparator
+    sort: function (options) {
+        if (this.comparator) {
+            this.collection.sort.call(this, options);
+        } else if (this.collection.comparator) {
+            var oldComparator = this.comparator;
+            var err;
+            this.comparator = this.collection.comparator;
+            try {
+                this.collection.sort.call(this, options);
+            } catch (e) {
+                err = e;
+            }
+            this.comparator = oldComparator;
+            if (err) throw err;
+        }
+        return this;
+    },
+
     // just reset filters, no model changes
     _resetFilters: function (resetComparator) {
         this._filters = [];
