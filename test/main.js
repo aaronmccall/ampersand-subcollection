@@ -574,6 +574,34 @@ test('clear filters', function (t) {
     t.end();
 });
 
+test('custom event bubbling', function (t) {
+
+    var base = getBaseCollection();
+    var sub = new SubCollection(base, {
+        where: {
+            sweet: true,
+            awesomeness: 6
+        }
+    });
+
+    var customCountBase = 0;
+    base.on('custom', function () {
+        customCountBase++;
+    });
+
+    var customCountSub = 0;
+    sub.on('custom', function () {
+        customCountSub++;
+    });
+
+    var model = sub.at(0);
+    model.trigger('custom', model);
+
+    t.equal(customCountBase, customCountSub, 'sub bubbled custom event');
+
+    t.end();
+});
+
 test('proxied methods where collection is `this`', function (t) {
     var base = getBaseCollection();
     var sub = new SubCollection(base, {
