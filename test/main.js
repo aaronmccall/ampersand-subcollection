@@ -202,7 +202,7 @@ test('should be able to specify/update offset and limit', function (t) {
     t.end();
 });
 
-test('should fire `add` events only if removed items match filter', function (t) {
+test('should fire `add` events only if added items match filter', function (t) {
     t.plan(1);
     var base = getBaseCollection();
     var sub = new SubCollection(base, {
@@ -510,9 +510,6 @@ test('reset', function (t) {
     sub.on('add', function (model) {
         itemsAdded.push(model);
     });
-    sub.on('sort', function () {
-        sortTriggered++;
-    });
 
     sub.reset();
 
@@ -522,7 +519,6 @@ test('reset', function (t) {
 
     t.deepEqual(sub._watched, [], 'should not be watching any properties');
     t.equal(sub.comparator, void 0, 'comparator should be undefined');
-    t.equal(sortTriggered, 1, 'should have triggered a `sort`');
 
     t.deepEqual(_.pluck(sub.models, 'id'), base.pluck('id'));
 
