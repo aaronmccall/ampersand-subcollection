@@ -577,3 +577,215 @@ test('clear filters', function (t) {
 
     t.end();
 });
+
+test('proxied methods where collection is `this`', function (t) {
+    var base = getBaseCollection();
+    var sub = new SubCollection(base, {
+        where: {
+            sweet: true
+        },
+        comparator: 'id',
+        filter: function (model) {
+            return model.awesomeness === 6;
+        }
+    });
+    ['add', 'parse', 'remove', 'set'].forEach(function (method) {
+        t.test(' --> ' + method, function (st) {
+            st.plan(2);
+            var oldMethod = base[method];
+            var called = false;
+            var models = [];
+            var options = {};
+            base[method] = function () {
+                st.equal(this, base, '`this` should be collection');
+                st.deepEqual(_.toArray(arguments), [models, options], 'args should pass through');
+                base[method] = oldMethod;
+            };
+            sub[method](models, options);
+            st.end();
+        });
+    });
+    t.end();
+});
+
+test('proxied methods where sub is `this`', function (t) {
+    var base = getBaseCollection();
+    var sub = new SubCollection(base, {
+        where: {
+            sweet: true
+        },
+        comparator: 'id',
+        filter: function (model) {
+            return model.awesomeness === 6;
+        }
+    });
+    ['serialize', 'toJSON'].forEach(function (method) {
+        var oldMethod = base[method];
+        t.test(' --> ' + method, function (st) {
+            st.plan(3);
+            var called = false;
+            var models = [];
+            var options = {};
+            base[method] = function () {
+                st.equal(this, sub, '`this` should be subcollection');
+                st.deepEqual(_.toArray(arguments), [models, options], 'args should pass through');
+                var result = oldMethod.call(this);
+                base[method] = oldMethod;
+                return result;
+            };
+            var result = sub[method](models, options);
+            st.deepEqual(result, sub.models.map(function (model) { return model[method](); }), 'result should equal sub.models data');
+            st.end();
+        });
+    });
+    t.end();
+});
+
+test('proxied serialize/toJSON', function (t) {
+    var base = getBaseCollection();
+
+    var sub = new SubCollection(base, {
+        where: {
+            sweet: true
+        },
+        comparator: 'id',
+        filter: function (model) {
+            return model.awesomeness === 6;
+        }
+    });
+    // the result of the default implementation of toJSON is the same as serialize
+    var method = (Math.ceil(Math.random() * 1000) % 2) ? 'toJSON' : 'serialize';
+    t.deepEqual(
+        sub[method](),
+        sub.map(function (model) { return model.serialize(); }),
+        'serialized sub should be map of its models serialized (' + method + ')'
+    );
+    t.end();
+});
+
+test('proxied add', function (t) {
+
+    var base = getBaseCollection();
+
+    var sub = new SubCollection(base, {
+        where: {
+            sweet: true,
+            awesomeness: 6
+        },
+        comparator: 'id'
+    });
+
+    var initialSubLength = sub.length;
+    var initialCollLength = base.length;
+    sub.add({id: 101, name: 'm', sweet: false, awesomeness: 6});
+    t.equal(sub.length, initialSubLength, 'adding a model that filters out doesn\'t change sub\'s length');
+    t.equal(base.length, initialCollLength + 1, 'adding a model that filters out does change collections\'s length');
+
+    sub.add({id: 102, name: 'n', sweet: true, awesomeness: 6});
+    t.equal(sub.length, initialSubLength + 1, 'adding a model that doesn\'t filter out changes sub\'s length');
+    t.end();
+});
+
+test('proxied remove', function (t) {
+
+    var base = getBaseCollection();
+
+    var sub = new SubCollection(base, {
+        where: {
+            sweet: true,
+            awesomeness: 6
+        },
+        comparator: 'id'
+    });
+
+    var initialSubLength = sub.length;
+    var initialCollLength = base.length;
+    sub.remove(base.findWhere({sweet: false}));
+    t.equal(sub.length, initialSubLength, 'removing a model that filters out doesn\'t change sub\'s length');
+    t.equal(base.length, initialCollLength - 1, 'removing a model that filters out does change collections\'s length');
+
+    sub.remove(base.findWhere({sweet: true, awesomeness: 6}));
+    t.equal(sub.length, initialSubLength - 1, 'removing a model that doesn\'t filter out changes sub\'s length');
+    t.end();
+});
+
+test('proxied set', function (t) {
+    var data = [
+        {id: 1, name: 'a', awesomeness: 1, sweet: true},
+        {id: 2, name: 'b', awesomeness: 2, sweet: false},
+        {id: 3, name: 'c', awesomeness: 3, sweet: true},
+        {id: 4, name: 'd', awesomeness: 4, sweet: false},
+        {id: 5, name: 'e', awesomeness: 5, sweet: false},
+        {id: 6, name: 'f', awesomeness: 6, sweet: true}
+    ];
+
+    var base = new Collection(data.map(_.clone));
+
+    var sub = new SubCollection(base, {
+        where: {
+            sweet: true
+        },
+        comparator: 'id',
+        filter: function (model) {
+            return model.awesomeness > 2;
+        }
+    });
+
+    var newData = data.map(function (model) {
+        model = _.clone(_.omit(model, 'collection'));
+        model.awesomeness += 5;
+        model.sweet = !model.sweet;
+        return model;
+    }).filter(function (model) {
+        return model.id % 3 !== 0;
+    });
+    sub.set(newData);
+    t.equal(base.length, 4, 'base should have 4 models ');
+    t.equal(sub.length, 3, 'sub should have 3 models ');
+    t.equal(base.get(3), _.findWhere(newData, {id: 3}), 'removes missing models');
+    t.equal(_.every(sub.models, function (model) {
+        var opposite = !model.sweet;
+        return opposite === data[model.id - 1].sweet;
+    }), true, 'merges existing models');
+    t.deepEqual(_.omit(sub.get(5), 'collection'), _.findWhere(newData, {id: 5}), 'adds new models');
+    t.end();
+});
+
+test('sort', function (t) {
+    
+    var data = [
+        {id: 1, name: 'a', awesomeness: 1, sweet: true},
+        {id: 2, name: 'b', awesomeness: 2, sweet: false},
+        {id: 3, name: 'c', awesomeness: 3, sweet: true},
+        {id: 4, name: 'd', awesomeness: 4, sweet: false},
+        {id: 5, name: 'e', awesomeness: 5, sweet: false},
+        {id: 6, name: 'f', awesomeness: 6, sweet: true}
+    ];
+
+    var base = new Collection(data.map(_.clone));
+
+    var sub = new SubCollection(base, {
+        where: {sweet: true}
+    });
+
+    // Keep track of how many times a sort event fires.
+    var sortCount = 0;
+    sub.on('sort', function () { sortCount++; });
+
+    // sort with sub's comparator
+    sub.comparator = function (a, b) { return a.awesomeness > b.awesomeness ? 1 : -1; };
+    sub.sort();
+    t.deepEqual(sub.models, _.chain(base.models).where({sweet: true}).sortBy(sub.comparator).value(), 'sorts with sub\'s comparator, if defined');
+
+    // sort with base's comparator
+    sub.comparator = undefined;
+    base.comparator = 'awesomeness';
+    sub.sort();
+    t.deepEqual(sub.models, _.chain(base.models).where({sweet: true}).value(), 'sorts with base\'s comparator when sub has none');
+
+    // no comparator
+    base.comparator = undefined;
+    sub.sort();
+    t.equal(sortCount, 2, 'does nothing when neither have a comparator');
+    t.end();
+});
