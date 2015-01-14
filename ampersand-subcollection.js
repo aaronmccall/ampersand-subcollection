@@ -128,6 +128,12 @@ _.extend(SubCollection.prototype, Events, underscoreMixins, {
         }
         return models;
     },
+    // sort with own comparator
+    sort: function (options) {
+        if (!this.comparator) throw new Error('Cannot sort a set without a comparator');
+        options || (options = {});
+        this._sort();
+        if (!options.silent) this.trigger('sort', this, options);
         return this;
     },
 
