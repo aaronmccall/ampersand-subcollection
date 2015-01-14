@@ -797,19 +797,17 @@ test('sort', function (t) {
     sub.on('sort', function () { sortCount++; });
 
     // sort with sub's comparator
-    sub.comparator = function (a, b) { return a.awesomeness > b.awesomeness ? 1 : -1; };
+    sub.comparator = function (a, b) { 
+        return a.awesomeness > b.awesomeness ? 1 : (a.awesomeness < b.awesomeness ? -1 : 0); };
     sub.sort();
-    t.deepEqual(sub.models, _.chain(base.models).where({sweet: true}).sortBy(sub.comparator).value(), 'sorts with sub\'s comparator, if defined');
+    t.deepEqual(sub.models, _.chain(base.models).where({sweet: true}).value().sort(sub.comparator), 'sorts with sub\'s comparator, if defined');
 
-    // sort with base's comparator
-    sub.comparator = undefined;
-    base.comparator = 'awesomeness';
-    sub.sort();
-    t.deepEqual(sub.models, _.chain(base.models).where({sweet: true}).value(), 'sorts with base\'s comparator when sub has none');
 
     // no comparator
-    base.comparator = undefined;
-    sub.sort();
-    t.equal(sortCount, 2, 'does nothing when neither have a comparator');
+    sub.comparator = undefined;
+    t.throws(sub.sort.bind(sub), 'throws when sub doesn\'t have a comparator');
+
+
+    t.equal(sortCount, 1, 'sort event only triggered once');
     t.end();
 });
