@@ -165,10 +165,11 @@ _.extend(SubCollection.prototype, Events, underscoreMixins, {
         // sort it
         if (this.comparator) newModels = _.sortBy(newModels, this.comparator);
 
+        // Cache a reference to the full filtered set to allow this.filtered.length. Ref: #6
+        this.filtered = newModels;
+
         // trim it to length
         if (this.limit || this.offset) {
-            // Cache a reference to the full filtered set to allow this.filtered.length. Ref: #6
-            this.filtered = newModels;
             newModels = newModels.slice(offset, this.limit + offset);
         }
 
