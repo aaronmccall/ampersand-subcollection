@@ -195,12 +195,13 @@ _.extend(SubCollection.prototype, Events, underscoreMixins, {
 
     _onCollectionEvent: function (eventName, model) {
         var propName = eventName.split(':')[1];
+        var wasMember = this.contains(model);
         // conditions under which we should re-run filters
         if (propName === this.comparator || _.contains(this._watched, propName) || _.contains(['add', 'remove', 'reset', 'sync'], eventName)) {
             this._runFilters();
         }
         // conditions under which we should proxy the events
-        if (!_.contains(['add', 'remove'], eventName) && this.contains(model)) {
+        if (!_.contains(['add', 'remove'], eventName) && wasMember) {
             this.trigger.apply(this, arguments);
         }
     }

@@ -607,3 +607,27 @@ test('custom event bubbling', function (t) {
 
     t.end();
 });
+
+test('bubbling when model change event causes it to be removed', function (t) {
+    t.plan(6);
+    var base = getBaseCollection();
+    var sub = new SubCollection(base, {
+        where: {
+            sweet: true,
+            awesomeness: 6
+        }
+    });
+    var modelCount = 10;
+    var one = sub.at(0);
+    var two = sub.at(1);
+
+    sub.on('change:sweet', function (model, sweet) {
+        modelCount--;
+        t.equal(sub.length, modelCount, 'sub.length was reduced by 1');
+        t.equal(false, sub.contains(model), 'model (' + model.cid + ') is not a member of sub');
+        t.equal(false, sweet, 'because it is no longer sweet');
+    });
+
+    one.sweet = false;
+    two.sweet = false;
+});
